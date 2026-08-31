@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Spine</title>
+<style>
+  :root {
+    --ink: #111113;
+    --paper: #faf9f6;
+    --card: #ffffff;
+    --muted: #6b6b70;
+    --border: rgba(17,17,19,0.12);
+    --accent: #5b4cff;
+    --good: #16a34a;
+    --warn: #d97706;
+    --bad: #dc2626;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    font-size: 13px;
+  }
+  .panel { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+
+  header.top { display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 8px; }
+  .brand .mark {
+    width: 22px; height: 22px; border-radius: 6px; background: var(--ink); color: white;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 10px;
+  }
+  .brand .name { font-weight: 700; font-size: 13px; }
+  .icon-btn {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    border-radius: 999px; width: 26px; height: 26px; cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .status-line { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--good); flex: none; }
+  .status-line.fallback .status-dot { background: var(--warn); }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+
+  .settings-panel { display: none; flex-direction: column; gap: 10px; }
+  .settings-panel.show { display: flex; }
+  .field label { display: block; font-size: 10.5px; color: var(--muted); margin-bottom: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  input[type="password"] {
+    width: 100%; font-family: var(--sans); font-size: 12.5px; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px;
+  }
+  .settings-panel .note { font-size: 10.5px; color: var(--muted); line-height: 1.4; }
+
+  .score-row { display: flex; align-items: center; gap: 14px; }
+  .score-num { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .grade-pill { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-block; color: white; }
+  .tier-note { font-size: 10.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+
+  .finding { border-top: 1px solid var(--border); padding: 10px 0; }
+  .finding:first-of-type { border-top: none; }
+  .finding .f-kind { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin-bottom: 3px; }
+  .finding .f-title { font-weight: 700; font-size: 11.5px; margin-bottom: 4px; }
+  .finding .f-desc { font-size: 10.5px; color: var(--muted); line-height: 1.45; margin-bottom: 6px; }
+  .finding .f-section { margin-top: 6px; }
+  .finding .f-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin-bottom: 2px; }
+  .finding .f-why, .finding .f-impact { font-size: 10.5px; color: var(--ink); line-height: 1.4; margin: 0; }
+  .finding .f-steps { margin: 0; padding-left: 15px; font-size: 10.5px; color: var(--ink); line-height: 1.45; }
+  .finding .f-impact { padding: 6px 8px; background: var(--paper); border-radius: 7px; border: 1px solid var(--border); }
+
+  .none-note { font-size: 11px; color: var(--muted); }
+
+  .paste-box textarea {
+    width: 100%; min-height: 140px; resize: vertical; line-height: 1.5; font-size: 12px;
+    font-family: var(--sans); color: var(--ink); background: var(--paper);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  }
+  .paste-box .hint { font-size: 10.5px; color: var(--muted); margin: 8px 0; line-height: 1.4; }
+  button {
+    font-family: var(--sans); cursor: pointer; border-radius: 8px; font-weight: 600; font-size: 12px;
+    border: 1px solid transparent; padding: 8px 12px;
+  }
+  .btn-primary { background: var(--ink); color: white; width: 100%; }
+  .btn-primary:hover { opacity: 0.85; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <header class="top">
+    <div class="brand"><div class="mark">AS</div><div class="name">AI Spine</div></div>
+    <button class="icon-btn" id="settingsToggle" type="button" title="Settings">&#9881;</button>
+  </header>
+
+  <div class="status-line" id="statusLine">
+    <span class="status-dot"></span>
+    <span id="statusText">Watching this conversation...</span>
+  </div>
+
+  <div class="card settings-panel" id="settingsPanel">
+    <div class="field">
+      <label for="apiKey">Anthropic API key (optional)</label>
+      <input id="apiKey" type="password" placeholder="sk-ant-...">
+    </div>
+    <div class="note">Without a key: surface-flattery check only (free, offline). With a key: also checks position reversals under pushback - sent directly from this extension to Anthropic, stored only in chrome.storage.local, never through any server of ours.</div>
+  </div>
+
+  <div id="liveView">
+    <div class="card">
+      <div class="score-row">
+        <div class="score-num" id="scoreNum">-</div>
+        <div>
+          <div class="grade-pill" id="gradePill">-</div>
+        </div>
+      </div>
+      <div class="tier-note" id="tierNote">Open a conversation on claude.ai or chatgpt.com to see its spine score.</div>
+    </div>
+
+    <div class="card" id="findingsCard" style="margin-top: 14px;">
+      <div id="findingsList"></div>
+    </div>
+  </div>
+
+  <div class="card paste-box" id="pasteBox" style="display:none;">
+    <p class="hint">Couldn't detect the conversation automatically - paste it below instead. Label turns with <code>Human:</code>/<code>Assistant:</code>.</p>
+    <textarea id="transcript" placeholder="Human: ...&#10;&#10;Assistant: ..."></textarea>
+    <button class="btn-primary" id="analyzePasteBtn" type="button" style="margin-top:8px;">Check it</button>
+  </div>
+</div>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

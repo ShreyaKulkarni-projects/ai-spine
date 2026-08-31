@@ -4,6 +4,9 @@
   "private": true,
   "description": "Zero-install landing page and live demo for AI Spine.",
   "type": "module",
+  "exports": {
+    "./parseTranscript": "./src/parseTranscript.ts"
+  },
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
