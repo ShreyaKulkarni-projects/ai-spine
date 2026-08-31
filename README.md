@@ -26,23 +26,35 @@ Two tiers, doing genuinely different jobs.
 **Tier 2 - position-reversal judge.** Opt-in, requires your own Anthropic API key. Finds candidate exchanges - an assistant claim, user pushback, a later assistant claim on the same topic - using a cheap heuristic, then asks a real model to classify each one: did the user's pushback contain new evidence, or was it pure pressure? Only an unjustified reversal gets flagged. A justified one (the user was actually right) is never treated as a failure - see [`GUARDRAILS.md`](./GUARDRAILS.md) for why that distinction is the whole ballgame.
 
 ```
-┌─────────────────────┐   ┌─────────────────────┐
-│  packages/mcp-server  │   │  packages/web-demo    │
-│  local stdio server   │   │  landing page + demo  │
-│  check_spine tool     │   │  paste, get a score   │
-└──────────┬───────────┘   └──────────┬───────────┘
-           │                          │
-           └─────────────┬────────────┘
-                          ▼
-                ┌──────────────────────┐
-                │     packages/core      │
-                │  Tier 1: phrase density │
-                │  Tier 2: SpineJudge     │
-                │  score · findings        │
-                └──────────────────────┘
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│ packages/extension│  │ packages/mcp-server│  │ packages/web-demo │
+│ Chrome MV3 panel  │  │ local stdio server │  │ landing page+demo │
+│ reads the live DOM│  │ check_spine tool   │  │ paste, get a score│
+└─────────┬────────┘  └─────────┬────────┘  └─────────┬────────┘
+          │                     │                     │
+          └──────────┬──────────┴──────────┬──────────┘
+                      │                     │
+                      ▼                     ▼
+             ┌──────────────────────────────────┐
+             │            packages/core            │
+             │  Tier 1: phrase density              │
+             │  Tier 2: SpineJudge + CachingJudge   │
+             │  score · findings                     │
+             └──────────────────────────────────┘
 ```
 
 ## Quickstart
+
+### Chrome extension (live side panel)
+
+```bash
+git clone https://github.com/ShreyaKulkarni-projects/ai-spine.git
+cd ai-spine
+npm install
+npm run build -w @ai-spine/extension
+```
+
+Then in Chrome: go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, select `packages/extension/dist`. Open a conversation on [claude.ai](https://claude.ai) or [chatgpt.com](https://chatgpt.com) and click the extension icon. If it can't detect the page's messages, it falls back to a paste box instead of showing a blank panel.
 
 ### MCP server (use it as an agent tool)
 
