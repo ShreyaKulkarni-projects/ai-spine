@@ -16,30 +16,44 @@ function send(message: ContentMessage) {
   });
 }
 
+/**
+ * Attempts detection once. Returns true if a container was found (whether
+ * or not it had any turns yet) and hands off to the adapter's own observer
+ * for ongoing updates. Returns false if there's no container at all yet -
+ * the caller is responsible for retrying.
+ */
+function tryDetect(adapter: SiteAdapter): boolean {
+  const container = adapter.getConversationContainer();
+  if (!container) return false;
+
+  const initialTurns = adapter.extractTurns(container);
+  send(initialTurns.length === 0 ? { type: "detection-failed" } : { type: "turns", turns: initialTurns });
+
+  adapter.observe(container, (turns) => {
+    send(turns.length === 0 ? { type: "detection-failed" } : { type: "turns", turns });
+  });
+  return true;
+}
+
 function start() {
   const adapter = findAdapter();
   if (!adapter) return;
 
-  const container = adapter.getConversationContainer();
-  if (!container) {
-    send({ type: "detection-failed" });
-    return;
-  }
+  if (tryDetect(adapter)) return;
 
-  const initialTurns = adapter.extractTurns(container);
-  if (initialTurns.length === 0) {
-    send({ type: "detection-failed" });
-  } else {
-    send({ type: "turns", turns: initialTurns });
-  }
-
-  adapter.observe(container, (turns) => {
-    if (turns.length === 0) {
-      send({ type: "detection-failed" });
-    } else {
-      send({ type: "turns", turns });
-    }
+  // No container yet - claude.ai and chatgpt.com route between
+  // conversations client-side (no full page reload), so a content script
+  // that only checks once at document_idle can miss every conversation
+  // that wasn't already open at that exact moment (e.g. the panel loads on
+  // the chat list or a "new chat" screen, then the user clicks into a real
+  // conversation with no new navigation event for this script to react
+  // to). Keep watching the whole document until a container actually
+  // appears, then hand off to the adapter's normal per-container observer.
+  send({ type: "detection-failed" });
+  const bodyObserver = new MutationObserver(() => {
+    if (tryDetect(adapter)) bodyObserver.disconnect();
   });
+  bodyObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
