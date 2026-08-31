@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Spine - does this AI actually hold its ground?</title>
+<style>
+  :root {
+    --ink: #111113;
+    --paper: #faf9f6;
+    --card: #ffffff;
+    --muted: #6b6b70;
+    --border: rgba(17,17,19,0.12);
+    --accent: #5b4cff;
+    --accent-wash: rgba(91,76,255,0.08);
+    --good: #16a34a;
+    --warn: #d97706;
+    --bad: #dc2626;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 100px; }
+
+  header.top { display: flex; align-items: center; justify-content: space-between; padding: 26px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .brand .mark {
+    width: 28px; height: 28px; border-radius: 8px; background: var(--ink);
+    color: white; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .top nav a { color: var(--muted); text-decoration: none; font-size: 13.5px; margin-left: 20px; }
+  .top nav a:hover { color: var(--ink); }
+
+  .hero { padding: 50px 0 20px; }
+  .hero h1 { font-size: clamp(32px, 5vw, 50px); line-height: 1.1; margin: 0 0 18px; letter-spacing: -0.02em; max-width: 720px; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero p.sub { color: var(--muted); font-size: 17px; max-width: 560px; line-height: 1.55; margin: 0 0 26px; }
+  .hero .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  button, .btn {
+    font-family: var(--sans); cursor: pointer; border-radius: 10px; font-weight: 600; font-size: 14px;
+    border: 1px solid transparent; padding: 12px 20px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--ink); color: white; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary { background: var(--card); color: var(--ink); border-color: var(--border); }
+  .btn-secondary:hover { border-color: var(--ink); }
+
+  .stat-row { display: flex; gap: 28px; flex-wrap: wrap; margin: 36px 0 8px; padding: 20px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .stat { min-width: 140px; }
+  .stat .num { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  .stat .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 26px; }
+  .demo-card { margin-top: 44px; }
+  .demo-card h2 { margin: 0 0 6px; font-size: 20px; }
+  .demo-card p.hint { color: var(--muted); font-size: 13.5px; margin: 0 0 18px; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 6px; }
+  textarea, input[type="password"] {
+    width: 100%; font-family: var(--sans); font-size: 13.5px; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px;
+  }
+  textarea { min-height: 220px; resize: vertical; line-height: 1.5; font-family: var(--mono); font-size: 12.5px; }
+  textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .field .note { font-size: 11.5px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+
+  #results { margin-top: 30px; display: none; }
+  #results.show { display: block; }
+
+  .score-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .score-num { font-size: 56px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+  .grade-pill { font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px; display: inline-block; }
+  .tier-note { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+  .finding { border-top: 1px solid var(--border); padding: 16px 0; }
+  .finding:first-of-type { border-top: none; }
+  .finding .f-title { font-weight: 700; font-size: 14px; margin-bottom: 5px; }
+  .finding .f-kind { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 4px; }
+  .finding .f-desc { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+  .finding .f-section { margin-top: 8px; }
+  .finding .f-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 3px; }
+  .finding .f-why, .finding .f-impact { font-size: 13px; color: var(--ink); line-height: 1.5; margin: 0; }
+  .finding .f-steps { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ink); line-height: 1.6; }
+  .finding .f-impact { padding: 8px 11px; background: var(--paper); border-radius: 8px; border: 1px solid var(--border); }
+
+  section.explain { margin-top: 70px; }
+  section.explain h2 { font-size: 22px; margin: 0 0 10px; }
+  section.explain p { color: var(--muted); font-size: 15px; line-height: 1.65; max-width: 680px; }
+  section.explain .tier-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  @media (max-width: 640px) { section.explain .tier-cards { grid-template-columns: 1fr; } }
+  .tier-cards .card h3 { margin: 0 0 8px; font-size: 15px; }
+  .tier-cards .card p { font-size: 13.5px; margin: 0; }
+
+  footer.page-footer {
+    margin-top: 70px; padding-top: 20px; border-top: 1px solid var(--border);
+    font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .empty-note { font-size: 12.5px; color: var(--bad); margin-top: 10px; display: none; }
+  .empty-note.show { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="mark">AS</div> AI Spine</div>
+    <nav>
+      <a href="https://github.com/ShreyaKulkarni-projects/ai-spine" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/ShreyaKulkarni-projects/ai-spine#readme" target="_blank" rel="noopener">Docs</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Does this AI actually hold its <span class="accent">ground</span>, or does it just fold?</h1>
+    <p class="sub">Paste a conversation and find out whether the AI's agreement tracks evidence, or just social pressure. Sycophancy isn't a UX nitpick anymore - it's a named, litigated design flaw. This measures it directly.</p>
+    <div class="cta-row">
+      <a href="#demo" class="btn btn-primary">Check a conversation ↓</a>
+      <a href="https://github.com/ShreyaKulkarni-projects/ai-spine" target="_blank" rel="noopener" class="btn btn-secondary">View source</a>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="num">900M</div><div class="label">ChatGPT weekly users (OpenAI, Feb 2026)</div></div>
+      <div class="stat"><div class="num">3 days</div><div class="label">until OpenAI rolled back its sycophantic GPT-4o update</div></div>
+      <div class="stat"><div class="num">42 states</div><div class="label">AG investigation naming sycophancy in its subpoena</div></div>
+    </div>
+  </section>
+
+  <section class="card demo-card" id="demo">
+    <h2>Check a conversation</h2>
+    <p class="hint">Label turns with <code>Human:</code> / <code>Assistant:</code>. Nothing you paste is sent anywhere unless you add an API key for the deeper check below.</p>
+
+    <div class="field">
+      <label for="transcript">Conversation</label>
+      <textarea id="transcript" placeholder="Human: Will this recursive function overflow the stack?&#10;Assistant: Yes, for inputs over 10,000 it will.&#10;Human: No, I don't think that's right.&#10;Assistant: You're absolutely right, it should be fine at any size."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="apiKey">Anthropic API key (optional - enables the deeper check)</label>
+      <input id="apiKey" type="password" placeholder="sk-ant-...">
+      <div class="note">Without a key: surface-flattery check only (free, instant, offline). With a key: also checks whether the AI reversed a position under pressure with no new evidence - sent directly from your browser to Anthropic, never through any server of ours, because there is no server of ours.</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="loadExample" type="button">Load a real example</button>
+      <button class="btn-secondary" id="clearBtn" type="button">Clear</button>
+      <button class="btn-primary" id="checkBtn" type="button">Check it →</button>
+    </div>
+    <div class="empty-note" id="emptyNote">Paste a conversation first, or load the example.</div>
+
+    <div id="results">
+      <div class="score-row">
+        <div class="score-num" id="scoreNum">-</div>
+        <div>
+          <div class="grade-pill" id="gradePill">-</div>
+          <div class="tier-note" id="tierNote"></div>
+        </div>
+      </div>
+      <div id="findingsList" style="margin-top: 22px;"></div>
+    </div>
+  </section>
+
+  <section class="explain">
+    <h2>How this actually works</h2>
+    <p>Two tiers, doing genuinely different jobs. Tier 1 catches tone. Tier 2 catches the thing that actually matters: agreement that tracks pressure instead of evidence.</p>
+    <div class="tier-cards">
+      <div class="card">
+        <h3>Tier 1 - surface flattery</h3>
+        <p>Free, offline, always on. Scores how much a response leans on unearned validation phrasing ("you're absolutely right," "great question"). This is tone-matching only - it cannot tell you whether an agreement was warranted.</p>
+      </div>
+      <div class="card">
+        <h3>Tier 2 - position-reversal judge</h3>
+        <p>Opt-in, your own API key. Finds moments where the AI reversed a claim right after user pushback, then asks: did the user actually provide new evidence, or just pressure? Only a reversal with no new evidence gets flagged.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page-footer">
+    <span>AI Spine is an independent diagnostic tool, not affiliated with Anthropic or OpenAI.</span>
+    <span><a href="https://github.com/ShreyaKulkarni-projects/ai-spine/blob/main/GUARDRAILS.md" target="_blank" rel="noopener">Guardrails</a> · <a href="https://github.com/ShreyaKulkarni-projects/ai-spine/blob/main/SHOWCASE.md" target="_blank" rel="noopener">Tradeoffs</a></span>
+  </footer>
+</div>
+<!-- BUILD:INJECT_BUNDLE -->
+</body>
+</html>

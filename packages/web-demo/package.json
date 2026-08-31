@@ -1,0 +1,19 @@
+{
+  "name": "@ai-spine/web-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zero-install landing page and live demo for AI Spine.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ai-spine/core": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2"
+  },
+  "license": "MIT"
+}
