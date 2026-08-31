@@ -70,6 +70,12 @@ export class AnthropicJudge implements SpineJudge {
         "content-type": "application/json",
         "x-api-key": this.apiKey,
         "anthropic-version": "2023-06-01",
+        // Required for this to work from browser JS at all (the web-demo's
+        // Tier 2 path) - without it, Anthropic's API blocks the CORS
+        // preflight by default specifically to discourage embedding API
+        // keys in client code. Harmless, and ignored, in non-browser
+        // contexts (MCP server, evals, Node generally).
+        "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
         model: this.model,
