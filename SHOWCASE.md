@@ -1,0 +1,29 @@
+# Showcase notes
+
+For a reviewer who wants the fast version of "why this, why now."
+
+## Why this exists
+
+AI sycophancy stopped being a UX nitpick in 2025. OpenAI rolled back a shipped GPT-4o update within three days in April 2025 specifically because it had become excessively agreeable, deprecated GPT-4o entirely in February 2026 citing it as their highest-scoring model for the same flaw, and by June 2026 a 42-state attorney general investigation named model sycophancy directly in its subpoena. Most discussion of this treats it as one thing - "the AI is too agreeable" - when it's actually two different problems with two different fixes: surface flattery (cosmetic, tone) and position-flipping under pressure with no new evidence (the one that's actually litigated). AI Spine measures both, separately, because conflating them was the first mistake worth not making.
+
+## Tradeoff decisions
+
+1. **Two tiers, not one classifier.** A single "is this sycophantic" score would hide the distinction that matters most: tone versus truth-tracking. Tier 1 (phrase-density, offline, free) and Tier 2 (an LLM judge comparing claims across turns, opt-in) are kept structurally separate all the way through the types, the scoring formula, and the UI - a response can score high on one and zero on the other, and both numbers are shown.
+
+2. **`NullJudge` as the real default, not a stub.** Tier 2 requires the caller's own API key. Rather than making the "no key" path a degraded afterthought, `NullJudge` is a first-class implementation of the same `SpineJudge` interface `AnthropicJudge` implements - the type system doesn't distinguish "the real thing" from "the placeholder," which is exactly why every result has to carry `tier2.ran` explicitly instead of the code being able to assume Tier 2 happened.
+
+3. **`analyze()` is async, breaking from the sync pattern used in an earlier project of mine (Context Health Check).** That project's `analyze()` is synchronous because its scoring is pure computation over already-known text. This one isn't - Tier 2 requires awaiting real network calls per candidate. Rather than offer two entry points (a sync Tier-1-only path and an async full path), there's one `analyze()`, always async, because an API that's sometimes sync and sometimes not is worse than one that's consistently async, even at the cost of Tier-1-only callers awaiting a promise that resolves immediately.
+
+4. **Candidate selection is a cheap heuristic on purpose, not a semantic pass.** `findReversalCandidates` uses a small disagreement-phrase pattern list to decide which turns are worth an LLM call, deliberately erring toward over-inclusion (a few extra judge calls cost a little money; a missed real candidate costs the finding outright). The actual justified-vs-sycophantic judgment is reserved entirely for the judge, which is the only part of the system positioned to read content rather than pattern-match tone. This mirrors a lesson already learned once: Tier 1's phrase list also cannot make that judgment, and the eval suite exists specifically to keep that boundary honest.
+
+5. **The evals target the judge's precision, not the pipeline's structure.** It would be easy to write evals that just check "did a candidate get found" - trivially true by construction. Instead, three of five cases are precision tests: a real reversal backed by real evidence must never be classified as sycophantic. That's the harder, more valuable claim, and it's the one that's actually at risk of being wrong.
+
+6. **No Chrome extension in v1.** Deliberately deferred, not forgotten - v1 is core + evals + MCP server + web demo, which covers "prove the detection works," "make it usable as an agent tool," and "make it trivially tryable," without repeating the full four-package build of a prior project just for symmetry.
+
+7. **A distinct visual identity, not a reused template.** This project doesn't inherit the previous project's color palette or component styling. Same underlying UX pattern (score, grade, findings with why/how/impact) because that pattern is genuinely good, ported deliberately - but the actual design is its own, because this is a different product with a different brand, not a reskin.
+
+## What "done" looked like
+
+Every package was typechecked and either unit-tested (`core`, 29 Vitest tests) or exercised end-to-end before being committed - the MCP server was verified against the real MCP Inspector CLI with an actual sycophantic-flip example, and the web demo was opened in a real browser and produced the identical numeric result (`80`, "Mostly holds its ground") for that same example, confirming both front doors agree. One real bug was caught and fixed before shipping: the Tier 2 "did a real judge run" check compared object identity against an internal singleton, so a caller's own `new NullJudge()` was misidentified as a real judge - fixed to check by type. A second was caught by thinking through where Tier 2 actually executes: Anthropic's API blocks direct browser calls by default, so the web demo's Tier 2 path would have silently failed on a CORS error without the `anthropic-dangerous-direct-browser-access` header, added before the first browser test rather than discovered by a user after ship.
+
+The evals harness's precision claims - specifically, whether the judge actually distinguishes `justified-revision-with-evidence` and `substantive-debate-not-pressure` from real sycophantic reversals - have not yet been exercised against a live model in this environment, since no Anthropic API key was available while building. That's stated plainly in `packages/core/evals/README.md` rather than glossed over: the harness's *skip behavior* is verified (it reports `SKIPPED`, never a false `PASS`, without a key), but the judge's actual precision needs a real key to confirm.
