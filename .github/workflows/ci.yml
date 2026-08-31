@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # core has to build first: every other package resolves
+      # @ai-spine/core's types and runtime code from its dist/ output.
+      - name: Build core
+        run: npm run build -w @ai-spine/core
+
+      - name: Test core
+        run: npm test -w @ai-spine/core
+
+      - name: Run core evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run eval -w @ai-spine/core
+
+      - name: Typecheck all packages
+        run: npm run typecheck --workspaces --if-present
+
+      - name: Build web-demo
+        run: npm run build -w @ai-spine/web-demo
+
+      - name: Build mcp-server
+        run: npm run build -w @ai-spine/mcp-server
