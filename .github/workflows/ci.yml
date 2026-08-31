@@ -40,3 +40,6 @@ jobs:
 
       - name: Build mcp-server
         run: npm run build -w @ai-spine/mcp-server
+
+      - name: Build extension
+        run: npm run build -w @ai-spine/extension
