@@ -148,11 +148,11 @@ const pasteBox = document.getElementById("pasteBox") as HTMLElement;
 const statusLine = document.getElementById("statusLine") as HTMLElement;
 const statusText = document.getElementById("statusText") as HTMLElement;
 
-function showFallback() {
+function showFallback(message = "Automatic detection unavailable - paste your conversation below.") {
   liveView.style.display = "none";
   pasteBox.style.display = "block";
   statusLine.classList.add("fallback");
-  statusText.textContent = "Automatic detection unavailable - paste your conversation below.";
+  statusText.textContent = message;
 }
 
 function showLive() {
@@ -183,7 +183,15 @@ async function requestInitialTurns() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) return;
     chrome.tabs.sendMessage(tab.id, { type: "request-turns" }, (response: ContentMessage | undefined) => {
-      if (chrome.runtime.lastError || !response) return;
+      if (chrome.runtime.lastError || !response) {
+        // Most common cause: the tab was already open before the extension
+        // was loaded/reloaded, so Chrome never injected the content script
+        // into it - reloading an extension does not retroactively inject
+        // into already-open tabs. Surface this instead of silently doing
+        // nothing, which is what happened here before this fix.
+        showFallback("Can't reach this tab - try refreshing the page (the extension may have loaded after the tab did), then reopen this panel.");
+        return;
+      }
       if (response.type === "turns") {
         showLive();
         void runAnalysis(response.turns);
