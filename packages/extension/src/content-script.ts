@@ -21,6 +21,12 @@ function send(message: ContentMessage) {
  * or not it had any turns yet) and hands off to the adapter's own observer
  * for ongoing updates. Returns false if there's no container at all yet -
  * the caller is responsible for retrying.
+ *
+ * Verified live against claude.ai (see commit history): switching between
+ * two *existing* conversations in the same tab reuses the same container
+ * element and mutates its contents in place - it does not get replaced.
+ * A single long-lived observer on that element, attached once here, keeps
+ * catching every subsequent switch without needing to re-detect.
  */
 function tryDetect(adapter: SiteAdapter): boolean {
   const container = adapter.getConversationContainer();

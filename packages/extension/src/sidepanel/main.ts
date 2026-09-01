@@ -210,5 +210,11 @@ initSettings().then(() => {
 
 chrome.tabs.onActivated.addListener(() => requestInitialTurns());
 chrome.tabs.onUpdated.addListener((_id, changeInfo) => {
-  if (changeInfo.status === "complete") requestInitialTurns();
+  // `changeInfo.url` covers client-side (History API) navigation - claude.ai
+  // and chatgpt.com route between conversations without a full page load, so
+  // `status: "complete"` alone (a full-navigation signal) is not guaranteed
+  // to fire on every conversation switch. This is a pull-based safety net on
+  // top of the content script's own push-on-mutation path: if a push is ever
+  // missed for any reason, a URL change still forces a fresh pull.
+  if (changeInfo.status === "complete" || changeInfo.url) requestInitialTurns();
 });
